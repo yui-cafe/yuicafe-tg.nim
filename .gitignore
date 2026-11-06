@@ -1,0 +1,13 @@
+# Nim build output
+nimcache/
+/yuicafe
+tests/test_commands
+tests/test_public_api
+
+# Local configuration and secrets
+.env
+
+# Editor and operating-system files
+.DS_Store
+.idea/
+.vscode/
