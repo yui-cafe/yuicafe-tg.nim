@@ -1,7 +1,7 @@
 ## Command parsing, dispatch, permissions, and cooldowns.
 import std/[options, sets, strutils, tables, times]
 
-import yuicafe/[client, types]
+import yuicafe_tg/[client, types]
 
 type
   ## Access policy applied before a command handler runs.
@@ -13,7 +13,9 @@ type
     ## Allows the command only in group and supergroup chats.
     cpGroupChat,
     ## Allows the command only for a configured owner ID.
-    cpOwner
+    cpOwner,
+    ## Allows the command only for an administrator of a group or supergroup.
+    cpChatAdmin
 
   ## A command token and its arguments parsed from a message.
   ParsedCommand* = object
@@ -232,6 +234,19 @@ proc reply*(context: CommandContext; text: string): Message =
   ## Sends `text` to the chat that supplied the command.
   context.client.sendMessage(context.update.message.chat.id, text)
 
+proc isChatAdministrator(context: CommandContext): bool =
+  let message = context.update.message
+  if not message.hasFrom or context.client.isNil or
+      message.chat.kind notin ["group", "supergroup"]:
+    return false
+  try:
+    return context.client.getChatMember(message.chat.id,
+      message.sender.id).isAdministrator
+  except TelegramError as error:
+    if error.isRetryable:
+      raise
+    return false
+
 proc isAllowed(router: CommandRouter; command: Command;
     context: CommandContext): bool =
   let message = context.update.message
@@ -245,6 +260,8 @@ proc isAllowed(router: CommandRouter; command: Command;
       message.chat.kind == "group" or message.chat.kind == "supergroup"
     of cpOwner:
       message.hasFrom and message.sender.id in router.ownerIds
+    of cpChatAdmin:
+      context.isChatAdministrator
 
   if result and not command.check.isNil:
     result = command.check(context)

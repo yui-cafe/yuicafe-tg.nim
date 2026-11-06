@@ -1,6 +1,6 @@
 import std/[atomics, logging, os]
 
-import yuicafe/[client, config, types]
+import yuicafe_tg/[client, config, types]
 
 type
   ## Receives one decoded update during long polling.

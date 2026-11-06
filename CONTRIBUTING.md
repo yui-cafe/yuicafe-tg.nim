@@ -29,13 +29,18 @@ decoded JSON fixtures and in-memory command handlers instead.
 
 *   Use `lower_snake_case.nim` filenames. Keep one clear responsibility per
     module.
-*   Put each command handler in `src/yuicafe/commands/<command>.nim`. Keep
+*   Keep reusable Telegram behavior in `src/yuicafe_tg/`. Application-only
+    behavior belongs in `src/yuicafe_app/`.
+*   Put each command handler in `src/yuicafe_app/commands/<command>.nim`. Keep
     parsing, dispatch, and shared policy in `commands/router.nim`.
+*   Put SQLite and other persistence behind application services in
+    `src/yuicafe_app/services/`. Put service data types in
+    `src/yuicafe_app/models/`.
 *   Group standard-library imports before yuicafe-tg imports. Remove unused
     imports.
 *   Export only intentional public API with `*`. Keep parsing and transport
     helpers private unless callers need to test or compose them.
-*   Treat the symbols re-exported by `import yuicafe` as the public library
+*   Treat the symbols re-exported by `import yuicafe_tg` as the public library
     surface. Preserve their behavior across compatible releases and add a
     `tests/test_public_api.nim` case when expanding that surface.
 *   Prefer `object` values for decoded Telegram payloads. Use `ref object` only

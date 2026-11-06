@@ -1,4 +1,5 @@
-import yuicafe/[commands/router, types]
+import yuicafe_app/commands/router
+import yuicafe_tg/types
 
 proc senderIdResponse*(message: Message): string =
   if message.hasFrom:

@@ -1,3 +1,4 @@
+## Telegram Bot API value types and JSON decoders.
 import std/json
 
 type
@@ -27,11 +28,17 @@ type
     kind*: string
     username*: string
 
+  ## A member's status in a Telegram chat.
+  ChatMember* = object
+    status*: string
+
   ## The supported fields of a Telegram message.
   Message* = object
     id*: int
     sender*: User
     hasFrom*: bool
+    replyToSender*: User
+    hasReplyToSender*: bool
     chat*: Chat
     text*: string
     hasText*: bool
@@ -70,6 +77,14 @@ proc decodeChat*(node: JsonNode): Chat =
   result.kind = field(node, "type").getStr()
   result.username = field(node, "username").getStr()
 
+proc decodeChatMember*(node: JsonNode): ChatMember =
+  ## Decodes the relevant fields of a Bot API chat-member object from `node`.
+  result.status = field(node, "status").getStr()
+
+proc isAdministrator*(member: ChatMember): bool =
+  ## Returns whether `member` is a chat administrator or the chat owner.
+  member.status == "administrator" or member.status == "creator"
+
 proc decodeMessage*(node: JsonNode): Message =
   ## Decodes the supported fields of a Bot API message object from `node`.
   result.id = field(node, "message_id").getInt()
@@ -77,6 +92,13 @@ proc decodeMessage*(node: JsonNode): Message =
   result.hasFrom = not sender.isNil and sender.kind == JObject
   if result.hasFrom:
     result.sender = decodeUser(sender)
+  let replyToMessage = field(node, "reply_to_message")
+  if not replyToMessage.isNil and replyToMessage.kind == JObject:
+    let replyToSender = field(replyToMessage, "from")
+    result.hasReplyToSender =
+      not replyToSender.isNil and replyToSender.kind == JObject
+    if result.hasReplyToSender:
+      result.replyToSender = decodeUser(replyToSender)
   result.chat = decodeChat(field(node, "chat"))
   let text = field(node, "text")
   result.hasText = not text.isNil and text.kind == JString

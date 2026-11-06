@@ -1,4 +1,4 @@
-import yuicafe/commands/router
+import yuicafe_app/commands/router
 
 proc registerStartCommand*(router: CommandRouter) =
   router.register(defineCommand(

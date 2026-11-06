@@ -7,22 +7,29 @@ Preserve the library/runtime boundary when making changes.
 
 ## Project Structure
 
-*   `src/yuicafe.nim`: public facade and executable entrypoint.
-*   `src/yuicafe/`: client, configuration, polling, and Telegram types.
-*   `src/yuicafe/commands/`: command router plus one module per command.
+*   `src/yuicafe.nim`: executable entrypoint for the bundled application.
+*   `src/yuicafe_tg.nim`: public facade for the reusable Telegram library.
+*   `src/yuicafe_tg/`: client, Telegram configuration values, polling, and
+    Telegram types.
+*   `src/yuicafe_app/`: application configuration and startup composition.
+*   `src/yuicafe_app/commands/`: command router plus one module per command.
+*   `src/yuicafe_app/services/`: application persistence and other services.
+*   `src/yuicafe_app/models/`: application data models.
 *   `tests/test_<subject>.nim`: focused Nim unit tests.
 *   `.env.example`: deployment configuration reference. Never commit `.env`.
 
-Put a new command in `src/yuicafe/commands/<command>.nim` and register it in
-`commands/defaults.nim`. Keep parser, permission, and cooldown logic in
-`commands/router.nim`.
+Put a new command in `src/yuicafe_app/commands/<command>.nim` and register it
+in `commands/defaults.nim`. Keep parser, permission, and cooldown logic in
+`commands/router.nim`. Put database access in a service, not a command handler.
 
 ## Build and Test
 
 Use Nim 2.2.12 or later and Nimble:
 
 ```sh
-nimpretty src/yuicafe.nim src/yuicafe/*.nim src/yuicafe/commands/*.nim tests/*.nim
+nimpretty src/yuicafe.nim src/yuicafe_tg.nim src/yuicafe_tg/*.nim \
+  src/yuicafe_app/*.nim src/yuicafe_app/commands/*.nim \
+  src/yuicafe_app/models/*.nim src/yuicafe_app/services/*.nim tests/*.nim
 nimble test
 nimble build
 export TELEGRAM_BOT_TOKEN='...'
@@ -37,8 +44,9 @@ token while testing.
 
 Use `lower_snake_case.nim` paths, two-space indentation, and `nimpretty` for
 modified Nim files. Put standard-library imports before yuicafe-tg imports.
-Export only intentional API with `*`; add a case to `tests/test_public_api.nim`
-when changing symbols available through `import yuicafe`.
+Export only intentional library API with `*`; add a case to
+`tests/test_public_api.nim` when changing symbols available through
+`import yuicafe_tg`.
 
 Prefer value `object` types for decoded API data. Use `ref object` only for
 shared mutable state such as `BotClient` or `CommandRouter`. Keep handlers

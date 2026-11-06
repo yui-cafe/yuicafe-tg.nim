@@ -9,5 +9,6 @@ installExt    = @["nim"]
 bin           = @["yuicafe"]
 
 requires "nim >= 2.2.12"
+requires "db_connector >= 0.1.0"
 
 switch("define", "ssl")

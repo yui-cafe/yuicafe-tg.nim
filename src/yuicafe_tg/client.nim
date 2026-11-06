@@ -1,6 +1,6 @@
 import std/[httpclient, json, os]
 
-import yuicafe/[config, types]
+import yuicafe_tg/[config, types]
 
 type
   ## Client for Telegram Bot API requests.
@@ -65,7 +65,12 @@ proc decodeError(apiMethod: string; statusCode: int;
       statusCode,
     retryAfterSeconds)
 
-proc isRetryable(error: ref TelegramError): bool =
+proc isRetryable*(error: ref TelegramError): bool =
+  ## Returns whether retrying a failed Bot API call may succeed.
+  ##
+  ## Client methods already apply bounded retries where it is safe to do so.
+  ## Callers can use this to distinguish permanent API rejections from
+  ## transient failures when deciding how to handle a failed operation.
   error.statusCode == 429 or error.errorCode == 429 or
     error.statusCode >= 500 or error.errorCode >= 500 or
     error.statusCode == 0
@@ -119,6 +124,15 @@ proc getWebhookInfo*(client: BotClient): WebhookInfo =
   ## Returns the webhook configuration currently set for the bot.
   decodeWebhookInfo(client.invoke("getWebhookInfo", newJObject(),
       retrySafe = true))
+
+proc getChatMember*(client: BotClient; chatId, userId: int64): ChatMember =
+  ## Returns the current membership status for `userId` in `chatId`.
+  if userId <= 0:
+    raise newException(ValueError, "chat member user ID must be positive")
+  decodeChatMember(client.invoke("getChatMember", %*{
+    "chat_id": chatId,
+    "user_id": userId
+  }, retrySafe = true))
 
 proc deleteWebhook*(client: BotClient; dropPendingUpdates = false) =
   ## Removes the bot's webhook.
@@ -191,3 +205,26 @@ proc sendMessage*(client: BotClient; chatId: int64; text: string): Message =
     "text": text
   }, retrySafe = false)
   decodeMessage(payload)
+
+proc banChatMember*(client: BotClient; chatId, userId: int64;
+    revokeMessages = false; untilDate = 0'i64) =
+  ## Bans `userId` from `chatId`, optionally until Unix time `untilDate`.
+  ##
+  ## An `untilDate` of zero creates a permanent ban.
+  ##
+  ## This operation is not retried because an ambiguous transport failure could
+  ## otherwise obscure whether Telegram applied the ban.
+  if userId <= 0:
+    raise newException(ValueError, "chat member user ID must be positive")
+  if untilDate < 0:
+    raise newException(ValueError, "ban expiration cannot be negative")
+  var params = %*{
+    "chat_id": chatId,
+    "user_id": userId,
+    "revoke_messages": revokeMessages
+  }
+  if untilDate > 0:
+    params["until_date"] = %untilDate
+  let result = client.invoke("banChatMember", params, retrySafe = false)
+  if not result.getBool():
+    raise apiError("banChatMember", "Telegram did not confirm the member ban")
